@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CONX Foundation AI Agent 시나리오 시뮬레이터</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f5f4ef;
+      color: #2b2a28;
+      --surface: #ffffff;
+      --surface-soft: #f7f5ef;
+      --border: rgba(43, 42, 40, 0.08);
+      --shadow: 0 18px 45px rgba(38, 36, 33, 0.08);
+      --radius: 24px;
+      --green: #1d9e75;
+      --yellow: #ba7517;
+      --red: #a32d2d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #f5f4ef 0%, #ece7dd 100%);
+      color: #2b2a28;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    /* ── 버튼 ── */
+    .button {
+      border: 0;
+      border-radius: 16px;
+      padding: 12px 18px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .button.primary {
+      color: #fff;
+      background: #2f3438;
+      box-shadow: 0 14px 30px rgba(47,52,56,0.18);
+    }
+
+    .button.secondary {
+      color: #2b2a28;
+      background: rgba(43,42,40,.08);
+    }
+
+    .button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .button:not(:disabled):hover {
+      transform: translateY(-1px);
+    }
+
+    /* ── hint-line (simulationBody 내부에서 사용) ── */
+    .hint-line {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      color: #6d6761;
+      font-size: 0.85rem;
+    }
+
+    .hint-line span {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      min-width: 110px;
+      text-align: center;
+      border-radius: 999px;
+      background: #f4f1e8;
+      color: #4e4a44;
+    }
+
+    .simulation.red .hint-line span {
+      background: rgba(255,220,220,.75);
+      color: #7d2424;
+    }
+
+    /* ── simulation ── */
+    .simulation {
+      display: grid;
+      gap: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .simulation.red .simulation-header {
+      border-color: rgba(210,69,69,0.2);
+      background: #fff1f1;
+    }
+
+    .simulation.red .simulation-header strong,
+    .simulation.red .simulation-header h2 {
+      color: #8a2323;
+    }
+
+    .simulation.red .node-item.active {
+      border-color: #d64545;
+      background: #fff2f2;
+    }
+
+    .simulation.red .node-item::after {
+      background: #d64545;
+    }
+
+    .simulation.red .timeline-connector.active { background: #d64545; }
+
+    .simulation.yellow .simulation-header,
+    .simulation.yellow .node-item.active {
+      border-color: #b87d13;
+      background: #fff4d9;
+    }
+
+    .simulation.yellow .timeline-connector.active { background: #b87d13; }
+
+    .simulation.green .simulation-header,
+    .simulation.green .node-item.active {
+      border-color: #1d9e75;
+      background: #eaf8ef;
+    }
+
+    .simulation.green .timeline-connector.active { background: #1d9e75; }
+
+    .simulation-header {
+      padding: 18px 18px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-soft);
+    }
+
+    .simulation-header strong {
+      display: block;
+      font-size: 0.95rem;
+      color: #6d6761;
+      margin-bottom: 8px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .simulation-header h2 {
+      margin: 0;
+      font-size: clamp(1.5rem, 2.3vw, 2rem);
+      line-height: 1.1;
+    }
+
+    .simulation-body {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .node-list { display: grid; gap: 14px; }
+
+    .node-item {
+      border-radius: 20px;
+      border: 1px solid rgba(43,42,40,.12);
+      background: #fff;
+      padding: 22px 24px;
+      display: grid;
+      gap: 12px;
+      position: relative;
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity .35s ease, transform .35s ease, border-color .2s ease, background .2s ease;
+    }
+
+    .node-item.visible { opacity: 1; transform: translateY(0); }
+
+    .node-item.active {
+      border-color: var(--green);
+      background: #eef7ef;
+      transform: translateY(0);
+    }
+
+    .node-item.completed { background: #f3f7f3; }
+
+    .node-item .node-step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #5b584f;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: rgba(47,52,56,.05);
+      width: fit-content;
+    }
+
+    .simulation.red .node-item .node-step {
+      background: rgba(214,69,69,.12);
+      color: #8a2323;
+    }
+
+    .node-item .node-role {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #2b2a28;
+    }
+
+    .node-item .node-desc {
+      margin: 0;
+      color: #5b584f;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      opacity: 0;
+      transition: opacity .25s ease;
+    }
+
+    .node-item::after {
+      content: '';
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(43,42,40,.12);
+    }
+
+    .node-item.active::after { background: var(--green); }
+
+    .timeline-connector {
+      width: 4px;
+      height: 36px;
+      margin: 0 auto;
+      border-radius: 999px;
+      background: rgba(43,42,40,.12);
+      opacity: 0;
+      transition: opacity .35s ease, transform .35s ease;
+      transform: translateY(-8px);
+    }
+
+    .timeline-connector.visible { opacity: 1; transform: translateY(0); }
+    .timeline-connector.active { background: var(--green); }
+
+    .typing-line {
+      margin: 0;
+      min-height: 24px;
+      color: #2b2a28;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+      white-space: pre;
+      letter-spacing: 0.02em;
+      opacity: 0.85;
+    }
+
+    .typing-cursor::after {
+      content: '|';
+      display: inline-block;
+      margin-left: 4px;
+      animation: blink 1s steps(2, start) infinite;
+    }
+
+    @keyframes blink { to { opacity: 0; } }
+
+    .empty-state {
+      padding: 32px 24px;
+      text-align: center;
+      color: #6d6761;
+      font-size: 1rem;
+      line-height: 1.8;
+    }
+
+    /* ── 섹션 공통 ── */
+    .section-overview,
+    .section-select,
+    .section-flow {
+      margin-bottom: 52px;
+    }
+
+    .section-title {
+      margin: 0 0 20px;
+      font-size: clamp(1.2rem, 2vw, 1.5rem);
+      color: #2b2a28;
+    }
+
+    /* ── 섹션 1: 시스템 오버뷰 ── */
+    .overview-header { margin-bottom: 24px; }
+
+    .overview-header h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 3vw, 2.4rem);
+      line-height: 1.1;
+    }
+
+    .overview-subtitle {
+      margin: 0;
+      color: #5b584f;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      max-width: 760px;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .route-col {
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+      background: var(--surface);
+      min-height: 520px;
+      align-content: start;
+    }
+
+    .route-col.green  { border-color: rgba(29,158,117,.35); background: #f0faf5; }
+    .route-col.yellow { border-color: rgba(186,117,23,.35); background: #fdf8ec; }
+    .route-col.red    { border-color: rgba(163,45,45,.35); background: #fdf0f0; }
+
+    .route-level-badge {
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #2b2a28;
+    }
+
+    .route-level-desc {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #5b584f;
+      line-height: 1.5;
+    }
+
+    .route-examples {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 10px;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .route-examples span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex: 0 1 calc(33% - 10px);
+      min-width: 100px;
+      max-width: 150px;
+      min-height: 36px;
+      padding: 10px 12px;
+      font-size: 0.76rem;
+      line-height: 1.3;
+      border-radius: 999px;
+      background: rgba(43,42,40,.08);
+      color: #5b584f;
+      overflow: hidden;
+    }
+
+    .route-col.green .route-examples span,
+    .route-col.yellow .route-examples span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-height: 38px;
+      line-height: 1.3;
+    }
+
+    .route-col.red .route-examples span {
+      flex: 0 1 calc(30% - 10px);
+      min-width: 100px;
+      max-width: 150px;
+      padding: 10px 12px;
+      font-size: 0.75rem;
+      white-space: normal;
+      line-height: 1.3;
+      max-height: 58px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .route-chain {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .role-chip {
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid rgba(43,42,40,.12);
+      color: #2b2a28;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .role-chip.human {
+      background: #fff7e6;
+      border-color: rgba(186,117,23,.4);
+      color: #7a4f00;
+    }
+
+    .role-chip.deploy {
+      background: #f0f0f0;
+      color: #5b584f;
+      font-weight: 700;
+    }
+
+    .role-chip-level {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(43,42,40,.07);
+      color: #6d6761;
+      flex-shrink: 0;
+    }
+
+    .role-chip.human .role-chip-level {
+      background: rgba(186,117,23,.12);
+      color: #7a4f00;
+    }
+
+    .chain-arrow {
+      color: rgba(43,42,40,.3);
+      font-size: 1rem;
+      padding: 3px 0 3px 14px;
+      line-height: 1;
+    }
+
+    /* ── UI/UX 개선 1: 시나리오 카드 화살표 ── */
+    .card-arrow {
+      font-size: 1rem;
+      color: rgba(43,42,40,.2);
+      padding-right: 14px;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      transition: color 0.15s ease, transform 0.15s ease;
+    }
+
+    .scenario-card:hover .card-arrow {
+      color: rgba(43,42,40,.45);
+      transform: translateX(2px);
+    }
+
+    /* ── UI/UX 개선 2: 플로우 완료 배너 ── */
+    .flow-complete-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 18px;
+      margin-top: 4px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      animation: fadeInUp 0.45s ease;
+    }
+
+    .flow-complete-banner.green  { background: #eaf8ef; border: 1px solid rgba(29,158,117,.2); color: #1d9e75; }
+    .flow-complete-banner.yellow { background: #fff4d9; border: 1px solid rgba(186,117,23,.2); color: #ba7517; }
+    .flow-complete-banner.red    { background: #ffe6e6; border: 1px solid rgba(163,45,45,.2); color: #a32d2d; }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── 섹션 2: 시나리오 선택 ── */
+    .scenario-group { margin-bottom: 28px; }
+
+    .group-heading {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 6px 0;
+      margin-bottom: 12px;
+      color: #5b584f;
+    }
+
+    .group-heading.red    { color: var(--red); }
+    .group-heading.yellow { color: var(--yellow); }
+    .group-heading.green  { color: var(--green); }
+
+    .scenario-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .scenario-card {
+      display: flex;
+      border-radius: 18px;
+      border: 1.5px solid rgba(43,42,40,.12);
+      background: var(--surface);
+      box-shadow: 0 4px 14px rgba(38,36,33,.05);
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      user-select: none;
+      min-height: 88px;
+    }
+
+    .scenario-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(38,36,33,.1);
+    }
+
+    .scenario-card.green.selected  { border-color: #1d9e75; background: #f5fbf8; }
+    .scenario-card.yellow.selected { border-color: #ba7517; background: #fdf9f0; }
+    .scenario-card.red.selected    { border-color: #a32d2d; background: #fdf5f5; }
+
+    .card-level-bar { width: 5px; flex-shrink: 0; }
+
+    .scenario-card.green  .card-level-bar { background: #1d9e75; }
+    .scenario-card.yellow .card-level-bar { background: #ba7517; }
+    .scenario-card.red    .card-level-bar { background: #a32d2d; }
+
+    .card-body {
+      padding: 16px 16px 16px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #2b2a28;
+      line-height: 1.3;
+    }
+
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .card-agent { font-size: 0.75rem; color: #6d6761; }
+
+    .card-steps {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(43,42,40,.07);
+      color: #5b584f;
+    }
+
+    /* ── 커스텀 입력 박스 ── */
+    .custom-input-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-top: 8px;
+    }
+
+    .custom-input-label {
+      margin: 0 0 12px;
+      font-size: 0.9rem;
+      color: #5b584f;
+    }
+
+    .search-input-group { display: grid; gap: 10px; }
+
+    .search-input {
+      width: 100%;
+      border: 1px solid rgba(43,42,40,.15);
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 0.95rem;
+      color: #2b2a28;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .search-input:focus {
+      border-color: rgba(29,158,117,.35);
+      box-shadow: 0 0 0 4px rgba(29,158,117,.08);
+    }
+
+    .search-action {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    /* ── 섹션 3: 플로우 메타 헤더 ── */
+    .flow-meta {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 12px;
+    }
+
+    .flow-meta-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .flow-level-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 999px;
+    }
+
+    .flow-level-badge.green  { background: #eaf8ef; color: #1d9e75; }
+    .flow-level-badge.yellow { background: #fff4d9; color: #ba7517; }
+    .flow-level-badge.red    { background: #ffe6e6; color: #a32d2d; }
+
+    .flow-title-text {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #2b2a28;
+      flex: 1;
+    }
+
+    .flow-agent-label { font-size: 0.85rem; color: #6d6761; }
+
+    .flow-progress-wrap {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(43,42,40,.1);
+      overflow: hidden;
+    }
+
+    .flow-progress-bar {
+      height: 100%;
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .flow-progress-bar.green  { background: #1d9e75; }
+    .flow-progress-bar.yellow { background: #ba7517; }
+    .flow-progress-bar.red    { background: #a32d2d; }
+
+    .flow-progress-label { font-size: 0.82rem; color: #6d6761; }
+
+    /* ── 완료 버튼 ── */
+    .flow-back-wrap {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* ── 섹션 0: 구조도 ── */
+    .section-diagram {
+      margin-bottom: 52px;
+    }
+
+    .diagram-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px 24px;
+      overflow: hidden;
+    }
+
+    .diagram-card-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6d6761;
+      margin: 0 0 20px;
+    }
+
+    .diagram-svg-wrap {
+      width: 100%;
+      overflow: visible;
+    }
+
+    .external-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #1d70b8;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .external-link:hover {
+      text-decoration: underline;
+    }
+
+    .agent-group {
+      cursor: pointer;
+      transition: transform 0.18s ease, filter 0.18s ease, stroke 0.18s ease;
+      outline: none;
+    }
+
+    .agent-group:hover rect {
+      filter: brightness(1.08);
+    }
+
+    .agent-group:focus-visible rect {
+      stroke: #1d70b8;
+      stroke-width: 2;
+      filter: brightness(1.08);
+    }
+
+    .agent-group text {
+      pointer-events: none;
+    }
+
+    .agent-popup {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,15,15,.5);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .agent-popup.active {
+      display: flex;
+    }
+
+    .agent-popup-card {
+      width: min(560px, 100%);
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 28px 24px;
+      position: relative;
+    }
+
+    .agent-popup-card h3 {
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+      color: #2b2a28;
+    }
+
+    .agent-popup-card p {
+      margin: 0 0 18px;
+      color: #5b584f;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .agent-popup-list {
+      margin: 0;
+      padding-left: 18px;
+      color: #4e4a44;
+      line-height: 1.7;
+    }
+
+    .agent-popup-list li {
+      margin-bottom: 10px;
+    }
+
+    .agent-popup-close {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      border: none;
+      background: #f4f1e8;
+      color: #2b2a28;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .agent-popup-close:hover {
+      background: #ece5dc;
+    }
+
+    /* ── 반응형 ── */
+    @media (max-width: 740px) {
+      .page { padding: 20px 16px 40px; }
+      .overview-grid { grid-template-columns: 1fr; }
+      .scenario-card-grid { grid-template-columns: 1fr; }
+      .search-action { justify-content: stretch; }
+      .button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- 섹션 0: 시스템 오버뷰 -->
+    <section class="section-overview">
+      <div class="overview-header">
+        <h1>CONX Foundation AI Agent 시뮬레이터</h1>
+                <p class="overview-subtitle">입력한 상황을 분류하고, 적합한 승인 흐름을 간편하게 확인합니다.</p>
+        <p class="overview-meta"><a class="external-link" href="https://xpla.foundation" target="_blank" rel="noreferrer">공식 웹 문서 보기 ↗</a></p>
+      </div>
+      <div class="overview-grid" id="overviewGrid"></div>
+    </section>
+
+    
+
+<!-- 섹션 1: 에이전트 구조도 -->
+    <section class="section-diagram">
+      <div class="diagram-card">
+        <p class="diagram-card-label">에이전트 구조</p>
+        <div class="diagram-svg-wrap">
+          <svg viewBox="0 0 920 730" xmlns="http://www.w3.org/2000/svg"
+               style="width:100%;height:auto;font-family:'Inter',system-ui,-apple-system,sans-serif;display:block;">
+            <defs>
+              <marker id="m-solid" viewBox="0 0 8 8" refX="8" refY="4"
+                      markerUnits="strokeWidth" markerWidth="10" markerHeight="10" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#2b2a28" stroke="none"/>
+              </marker>
+              <marker id="m-dash" viewBox="0 0 8 8" refX="8" refY="4"
+                      markerUnits="strokeWidth" markerWidth="10" markerHeight="10" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#2b2a28" stroke="none"/>
+              </marker>
+            </defs>
+
+            <!-- ════════════════════════════════════════
+                 레이어 1 — 화살표 (박스보다 먼저 그림)
+                 ════════════════════════════════════════ -->
+
+            <!-- Level 2 경유 → R&C Manager : 단일 실선 -->
+            <line x1="190" y1="102" x2="267" y2="208"
+                  stroke="rgba(43,42,40,.30)" stroke-width="1.5" marker-end="url(#m-solid)"/>
+
+            <!-- CoS 직행 → CoS : 일반 실선 -->
+            <line x1="706" y1="108" x2="706" y2="340"
+                  stroke="rgba(43,42,40,.30)" stroke-width="1.5" marker-end="url(#m-solid)"/>
+
+            <!-- CoS 직행 → R&C Manager : 예외 점선 -->
+            <line x1="706" y1="108" x2="300" y2="210"
+                  stroke="rgba(43,42,40,.26)" stroke-width="1.5"
+                  stroke-dasharray="5,4" marker-end="url(#m-dash)"/>
+
+            <!-- R&C Manager → CoS : 실선 -->
+            <line x1="267" y1="284" x2="267" y2="340"
+                  stroke="rgba(43,42,40,.30)" stroke-width="1.5" marker-end="url(#m-solid)"/>
+
+            <!-- CoS → CEO Agent : 실선 -->
+            <line x1="454" y1="416" x2="454" y2="456"
+                  stroke="rgba(43,42,40,.30)" stroke-width="1.5" marker-end="url(#m-solid)"/>
+
+            <!-- CoS → 배포 직접 (Green 직접 승인, 실선 우측 곡선) -->
+            <path d="M884,378 C912,378 912,683 758,683"
+                  stroke="rgba(43,42,40,.30)" stroke-width="1.5"
+                  fill="none" marker-end="url(#m-solid)"/>
+
+            <!-- CEO → 협의체 : 실선 -->
+            <path d="M150,490 C120,490 95,540 92,556"
+                  stroke="rgba(43,42,40,.30)" stroke-width="1.5" fill="none"
+                  marker-end="url(#m-solid)"/>
+
+            <!-- 협의체 → CEO Agent : 실선 -->
+            <line x1="92" y1="590" x2="454" y2="532"
+                  stroke="rgba(43,42,40,.30)" stroke-width="1.5" marker-end="url(#m-solid)"/>
+
+            <!-- CEO → 배포 : 실선 -->
+            <line x1="454" y1="532" x2="454" y2="648"
+                  stroke="rgba(43,42,40,.30)" stroke-width="1.5" marker-end="url(#m-solid)"/>
+
+            <!-- ════════════════════════════════════════
+                 레이어 2 — 그룹 경계 박스 & 칩
+                 ════════════════════════════════════════ -->
+
+            <!-- ── Level 2 경유 그룹 ── -->
+            <rect x="8" y="8" width="372" height="136" rx="18"
+                  fill="rgba(253,240,240,.55)" stroke="rgba(163,45,45,.32)"
+                  stroke-width="1.5"/>
+            <text x="194" y="30" text-anchor="middle" font-size="11.5"
+                  font-weight="600" fill="#8a4040" letter-spacing="0.04em">Level 2 경유</text>
+
+            <g id="agent-bd" class="agent-group" role="button" aria-label="BD Agent" tabindex="0">
+              <rect x="22"  y="42" width="100" height="52" rx="12"
+                    fill="#fdf0f0" stroke="rgba(163,45,45,.28)" stroke-width="1.5"/>
+              <text x="72"  y="73" text-anchor="middle" font-size="14"
+                    font-weight="700" fill="#7d2020">BD</text>
+            </g>
+
+            <g id="agent-disclosure" class="agent-group" role="button" aria-label="공시 Agent" tabindex="0">
+              <rect x="140" y="42" width="100" height="52" rx="12"
+                    fill="#fdf0f0" stroke="rgba(163,45,45,.28)" stroke-width="1.5"/>
+              <text x="190" y="73" text-anchor="middle" font-size="14"
+                    font-weight="700" fill="#7d2020">공시</text>
+            </g>
+
+            <g id="agent-legal" class="agent-group" role="button" aria-label="법무/재무 Agent" tabindex="0">
+              <rect x="258" y="42" width="110" height="52" rx="12"
+                    fill="#fdf0f0" stroke="rgba(163,45,45,.28)" stroke-width="1.5"/>
+              <text x="313" y="73" text-anchor="middle" font-size="14"
+                    font-weight="700" fill="#7d2020">법무/재무</text>
+            </g>
+
+            <!-- ── CoS 직행 그룹 ── -->
+            <rect x="508" y="8" width="396" height="136" rx="18"
+                  fill="rgba(234,248,239,.6)" stroke="rgba(29,158,117,.32)"
+                  stroke-width="1.5" stroke-dasharray="6,4"/>
+            <text x="706" y="30" text-anchor="middle" font-size="11.5"
+                  font-weight="600" fill="#1a6b4f" letter-spacing="0.04em">CoS 직행</text>
+
+            <rect id="agent-governance" class="agent-node" role="button" aria-label="거버넌스 Agent" tabindex="0" x="522" y="38" width="168" height="44" rx="10"
+                  fill="#eaf8ef" stroke="rgba(29,158,117,.32)" stroke-width="1.5"/>
+            <text x="606" y="65" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="#156b47">거버넌스</text>
+
+            <rect id="agent-tech" class="agent-node" role="button" aria-label="테크 Agent" tabindex="0" x="706" y="38" width="180" height="44" rx="10"
+                  fill="#eaf8ef" stroke="rgba(29,158,117,.32)" stroke-width="1.5"/>
+            <text x="796" y="65" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="#156b47">테크</text>
+
+            <rect id="agent-cs" class="agent-node" role="button" aria-label="CS Agent" tabindex="0" x="522" y="90" width="168" height="44" rx="10"
+                  fill="#eaf8ef" stroke="rgba(29,158,117,.32)" stroke-width="1.5"/>
+            <text x="606" y="117" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="#156b47">CS</text>
+
+            <rect id="agent-community" class="agent-node" role="button" aria-label="커뮤니티 마케팅 Agent" tabindex="0" x="706" y="90" width="180" height="44" rx="10"
+                  fill="#eaf8ef" stroke="rgba(29,158,117,.32)" stroke-width="1.5"/>
+            <text x="796" y="117" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="#156b47">커뮤니티 마케팅</text>
+
+            <!-- ════════════════════════════════════════
+                 레이어 3 — 중간 & 하단 티어 박스
+                 ════════════════════════════════════════ -->
+
+            <!-- ── Risk &amp; Compliance Manager ── -->
+            <g id="agent-rc" class="agent-group" role="button" aria-label="Risk & Compliance Manager" tabindex="0">
+              <rect x="76" y="208" width="382" height="76" rx="16"
+                    fill="#fdf8ec" stroke="rgba(186,117,23,.4)" stroke-width="1.5"/>
+              <text x="267" y="240" text-anchor="middle" font-size="14.5"
+                    font-weight="700" fill="#7a5010">Risk &amp; Compliance Manager</text>
+              <text x="267" y="263" text-anchor="middle" font-size="12"
+                    fill="#9a7030">리스크 1차 검토</text>
+            </g>
+
+            <!-- ── Chief of Staff (CoS) ── -->
+            <g id="agent-cos" class="agent-group" role="button" aria-label="Chief of Staff (CoS)" tabindex="0">
+              <rect x="36" y="340" width="848" height="76" rx="16"
+                    fill="#eeecfa" stroke="rgba(100,90,190,.3)" stroke-width="1.5"/>
+              <text x="460" y="372" text-anchor="middle" font-size="16"
+                    font-weight="700" fill="#3a3490">Chief of Staff (CoS)</text>
+              <text x="460" y="396" text-anchor="middle" font-size="12"
+                    fill="#6050a8">취합 · Green 직접 승인 · CEO 보고</text>
+            </g>
+
+            <!-- ── CEO Agent ── -->
+            <g id="agent-ceo" class="agent-group" role="button" aria-label="CEO Agent" tabindex="0">
+              <rect x="150" y="456" width="608" height="76" rx="16"
+                    fill="#e8edf8" stroke="rgba(60,90,180,.3)" stroke-width="1.5"/>
+              <text x="454" y="488" text-anchor="middle" font-size="16"
+                    font-weight="700" fill="#253585">CEO Agent</text>
+              <text x="454" y="512" text-anchor="middle" font-size="12"
+                    fill="#4060a8">전략 판단 · 최종 승인 방향 결정</text>
+            </g>
+
+            <!-- ── 협의체 ── -->
+            <g id="agent-counsel" class="agent-group" role="button" aria-label="협의체" tabindex="0">
+              <rect x="8" y="556" width="168" height="68" rx="14"
+                    fill="#f4f4f0" stroke="rgba(43,42,40,.18)" stroke-width="1.5"/>
+              <text x="92" y="586" text-anchor="middle" font-size="14"
+                    font-weight="700" fill="#3a3835">협의체</text>
+              <text x="92" y="607" text-anchor="middle" font-size="12"
+                    fill="#6b6760">사람 최종 컨펌</text>
+            </g>
+
+            <!-- ── 배포 ── -->
+            <rect x="150" y="648" width="608" height="70" rx="16"
+                  fill="#e8f5ee" stroke="rgba(29,158,117,.35)" stroke-width="1.5"/>
+            <text x="454" y="678" text-anchor="middle" font-size="15"
+                  font-weight="700" fill="#1a6b47">배포</text>
+            <text x="454" y="700" text-anchor="middle" font-size="12"
+                  fill="#2a8060">Internal · Telegram · Mail · Discord · Medium</text>
+          </svg>
+        </div>
+      </div>
+    <div class="agent-popup" id="agentPopup">
+      <div class="agent-popup-card">
+        <button type="button" class="agent-popup-close" id="agentPopupClose" aria-label="닫기">×</button>
+        <h3 id="agentPopupTitle">Agent</h3>
+        <p id="agentPopupSubtitle"></p>
+        <ul class="agent-popup-list" id="agentPopupList"></ul>
+      </div>
+    </div>
+
+    <!-- 섹션 2: 시나리오 선택 -->
+    <section class="section-select">
+      <h2 class="section-title">시나리오 선택</h2>
+      <div id="scenarioGroups"></div>
+      <div class="custom-input-box">
+        <p class="custom-input-label">💬 등록되지 않은 상황 직접 입력</p>
+        <div class="search-input-group">
+          <input id="scenarioInput" class="search-input" type="text" placeholder="예: 공시 등록, 거래소 문의, MOU 체결" aria-label="시나리오 입력" />
+          <div class="search-action">
+            <button class="button primary" id="runButton" type="button">시뮬레이션 시작</button>
+            <button class="button secondary" id="clearButton" type="button" disabled>초기화</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 섹션 3: 플로우 애니메이션 -->
+    <section class="section-flow" id="sectionFlow">
+      <div class="flow-meta" id="flowMeta" hidden>
+        <div class="flow-meta-top">
+          <span class="flow-level-badge" id="flowLevelBadge"></span>
+          <span class="flow-title-text" id="flowTitleText"></span>
+          <span class="flow-agent-label" id="flowAgentLabel"></span>
+        </div>
+        <div class="flow-progress-wrap">
+          <div class="flow-progress-bar" id="flowProgressBar"></div>
+        </div>
+        <div class="flow-progress-label" id="flowProgressLabel"></div>
+      </div>
+      <div class="simulation" id="simulationArea">
+        <div class="simulation-header">
+          <strong>시뮬레이션 결과</strong>
+          <h2 id="simulationTitle">시나리오를 선택하거나 직접 입력하세요</h2>
+        </div>
+        <div class="simulation-body" id="simulationBody">
+          <div class="empty-state">위에서 시나리오 카드를 클릭하거나 상황을 직접 입력하세요.</div>
+        </div>
+      </div>
+      <div class="flow-back-wrap" id="flowBackWrap" hidden>
+        <button class="button secondary" id="backToSelectButton" type="button">← 다른 시나리오 보기</button>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // ── 시나리오 데이터 ─────────────────────────────
+    const scenarios = [
+      {
+        id: 'disclosure',
+        keywords: ['공시 등록', '토큰 유통량 공시', '공시', 'cmc', 'coinmarketcap', '코인마켓캡'],
+        title: '공시 등록',
+        agent: '공시 Agent',
+        level: 'Red',
+        flow: [
+          { step: '1', role: '공시', description: '토큰 유통량 자료 정리 및 공시 기안', result: '공시 초안 작성' },
+          { step: '2', role: 'Risk & Compliance Manager', description: '규제 및 컴플라이언스 검토', result: '리스크 평가 의견' },
+          { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 정리 및 최종 배포 준비', result: '검토 의견 정리' },
+          { step: '4', role: 'CEO Agent', description: '초기 승인 및 배포 방향 확인', result: '초기 승인' },
+          { step: '5', role: '협의체', description: '내부 최종 검토 및 합의', result: '내부 합의' },
+          { step: '6', role: 'CEO Agent', description: '최종 승인 확인 및 배포 확정', result: '최종 승인' },
+          { step: '7', role: '배포', description: '최종 공시 문서 배포', result: '공시 완료' }
+        ]
+      },
+      {
+        id: 'exchange',
+        keywords: ['거래소 커뮤니케이션', '거래소', '커뮤니케이션'],
+        title: '거래소 대응',
+        agent: 'BD Agent',
+        level: 'Red',
+        flow: [
+          { step: '1', role: 'BD', description: '거래소 요구사항 확인 및 메시지 초안 작성', result: '커뮤니케이션 초안' },
+          { step: '2', role: 'Risk & Compliance Manager', description: '내용 규제 검토 및 리스크 분석', result: '규제 검토 의견' },
+          { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 정리 및 최종 회신 자료 준비', result: '최종 회신 자료' },
+          { step: '4', role: 'CEO Agent', description: '초기 승인 및 회신 방향 확인', result: '초기 승인' },
+          { step: '5', role: '협의체', description: '내부 최종 검토 및 합의', result: '내부 합의' },
+          { step: '6', role: 'CEO Agent', description: '최종 확인 및 회신 승인', result: '최종 승인' },
+          { step: '7', role: '배포', description: '거래소에 공식 회신 발송', result: '회신 완료' }
+        ]
+      },
+      {
+        id: 'mou',
+        keywords: ['파트너사 MOU 체결', 'MOU', '파트너'],
+        title: '파트너사 MOU 체결',
+        agent: 'BD + 법무/재무 Agent',
+        level: 'Red',
+        flow: [
+          { step: '1', role: 'BD', description: '파트너 계약 조건 정리 및 MOU 초안 작성', result: 'MOU 초안' },
+          { step: '2', role: '법무/재무', description: '초안의 법적·재무적 리스크 검토 및 수정', result: '법무 검토 의견' },
+          { step: '3', role: 'Chief of Staff / CoS', description: '법무/재무 검토 결과 정리 및 내부 공유', result: '내부 검토 자료' },
+          { step: '4', role: 'CEO Agent', description: '최종 승인 여부 확인 및 서명 지시', result: 'CEO 승인' },
+          { step: '5', role: '협의체', description: '필요 시 추가 협의 및 최종 조율', result: '내부 합의' },
+          { step: '6', role: 'CEO Agent', description: '최종 승인 확인 및 실행 준비', result: '최종 배포 승인' },
+          { step: '7', role: '배포', description: '파트너와 MOU 체결 완료', result: 'MOU 체결 완료' }
+        ]
+      },
+      {
+        id: 'community',
+        keywords: ['일반 커뮤니티 공지', '커뮤니티 공지', '공지', '이벤트', '세레모니', '행사'],
+        title: '일반 커뮤니티 공지',
+        agent: '커뮤니티 마케팅 Agent',
+        level: 'Green',
+        flow: [
+          { step: '1', role: '커뮤니티 마케팅', description: '공지 내용 작성 및 검토', result: '공지 초안' },
+          { step: '2', role: 'Chief of Staff / CoS', description: '내용 취합 및 Green 승인', result: '배포 승인' },
+          { step: '3', role: '배포', description: '커뮤니티 채널에 공지', result: '공지 배포 완료' }
+        ]
+      },
+      {
+        id: 'proposal',
+        keywords: ['온체인 프로포절 제출', '프로포절 제출', '온체인'],
+        title: '프로포절 제출',
+        agent: '거버넌스 Agent',
+        level: 'Red',
+        flow: [
+          { step: '1', role: '거버넌스', description: '프로포절 안건 작성 및 검토', result: '프로포절 초안' },
+          { step: '2', role: 'Risk & Compliance Manager', description: '규제 및 체계 검토', result: '리스크 분석' },
+          { step: '3', role: 'Chief of Staff / CoS', description: '프로포절 취합 및 제출 자료 준비', result: '제출 자료' },
+          { step: '4', role: 'CEO Agent', description: '최종 승인 여부 확인 및 제출 결정', result: 'CEO 제출 승인' },
+          { step: '5', role: '협의체', description: '내부 피드백 수집 및 조율', result: '내부 결론' },
+          { step: '6', role: 'CEO Agent', description: '최종 제출 승인 및 실행 준비', result: '최종 제출 승인' },
+          { step: '7', role: '배포', description: '온체인 프로포절 제출', result: '프로포절 제출 완료' }
+        ]
+      },
+      {
+        id: 'legal',
+        keywords: ['법무 계약 검토', '법무', '계약 검토'],
+        title: '법무 계약 검토',
+        agent: '법무/재무 Agent',
+        level: 'Red',
+        flow: [
+          { step: '1', role: '법무/재무', description: '계약서 검토 및 법률 리스크 확인', result: '법무 검토 의견' },
+          { step: '2', role: 'Risk & Compliance Manager', description: '계약상 규제 사항 추가 확인', result: '추가 검토 의견' },
+          { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 취합 및 CEO 제출', result: '승인 요청 자료' },
+          { step: '4', role: 'CEO Agent', description: '최초 승인 및 협의체 상정', result: 'CEO 상정 결정' },
+          { step: '5', role: '협의체', description: '최종 내부 컨펌 회의', result: '내부 합의' },
+          { step: '6', role: 'CEO Agent', description: '최종 승인 및 배포 방향 결정', result: '최종 계약 승인' },
+          { step: '7', role: '배포', description: '계약 진행 및 체결 준비', result: '계약 체결 진행' }
+        ]
+      },
+      {
+        id: 'tech',
+        keywords: ['테크 문서 업데이트', '기술 문서', '문서 업데이트'],
+        title: '테크 문서 업데이트',
+        agent: '테크 Agent',
+        level: 'Green',
+        flow: [
+          { step: '1', role: '테크', description: '문서 업데이트 및 기술 검토', result: '업데이트 문서' },
+          { step: '2', role: 'Chief of Staff / CoS', description: '내용 확인 및 Green 승인', result: '배포 승인' },
+          { step: '3', role: '배포', description: '문서 배포 및 공유', result: '문서 배포 완료' }
+        ]
+      },
+      {
+        id: 'cs',
+        keywords: ['유저 CS 대응', 'CS', '고객 대응'],
+        title: '유저 CS 대응',
+        agent: 'CS Agent',
+        level: 'Green',
+        flow: [
+          { step: '1', role: 'CS', description: '사용자 문의 확인 및 대응 초안 작성', result: 'CS 응대안' },
+          { step: '2', role: 'Chief of Staff / CoS', description: '응대 내용 확인 및 승인', result: '응대 승인' },
+          { step: '3', role: '배포', description: 'CS 대응 전달', result: '응대 완료' }
+        ]
+      },
+      {
+        id: 'partner_comm',
+        keywords: ['파트너사 커뮤니케이션', '파트너 커뮤니케이션', '인프라 협력사', '협력사 대응', '사업성 문의'],
+        title: '파트너사 대응',
+        agent: 'BD Agent',
+        level: 'Yellow',
+        flow: [
+          { step: '1', role: 'BD', description: '파트너사 요구사항 확인 및 커뮤니케이션 초안 작성', result: '커뮤니케이션 초안' },
+          { step: '2', role: 'Risk & Compliance Manager', description: '대외 리스크 및 내용 검토', result: '리스크 검토 의견' },
+          { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 정리 및 최종 회신 자료 준비', result: '최종 회신 자료' },
+          { step: '4', role: 'CEO Agent', description: '최종 회신 승인 및 대응 방향 확정', result: '회신 승인' },
+          { step: '5', role: '배포', description: '파트너사에 공식 회신 발송', result: '회신 완료' }
+        ]
+      },
+      {
+        id: 'governance_report',
+        keywords: ['거버넌스 현황', '밸리데이터 안내', '밸리데이터', '메인넷 업데이트', '거버넌스 투표', '투표 현황'],
+        title: '거버넌스 현황 리포트',
+        agent: '거버넌스 Agent',
+        level: 'Yellow',
+        flow: [
+          { step: '1', role: '거버넌스', description: '밸리데이터 상태·투표 현황·메인넷 변경 사항 정리', result: '거버넌스 현황 초안' },
+          { step: '2', role: 'Risk & Compliance Manager', description: '규제·운영 리스크 검토', result: '리스크 검토 의견' },
+          { step: '3', role: 'Chief of Staff / CoS', description: '내용 취합 및 배포 계획 확인', result: '배포 자료' },
+          { step: '4', role: 'CEO Agent', description: '최종 확인 및 배포 승인', result: '배포 승인' },
+          { step: '5', role: '배포', description: '밸리데이터 채널 및 커뮤니티 공유', result: '공지 완료' }
+        ]
+      }
+    ];
+
+    const ruleKeywords = {
+      red: [
+        '계약', 'mou', 'binding', 'obligation', 'commit',
+        '공시', '유통량', '유통계획', '거래소 제출',
+        '자산', '토큰', '예산', '인센티브', '보상', '환불',
+        '법적 분쟁', '책임', '클레임', '위반', '규제 대응',
+        '외부 법무', '온체인', '프로포절', '공식 입장', '사과문', '위기'
+      ],
+      yellow: [
+        '거래소', '커뮤니케이션', '파트너', '외부 커뮤니케이션', '거버넌스 안내',
+        '공식', '파트너 대응', '대외', '제안서'
+      ],
+      green: [
+        '내부', '정기', '운영', '업데이트', 'faq', '사용자 문의', '커뮤니티', '기술 문서', '문서 업데이트'
+      ]
+    };
+
+    const flowTemplates = {
+      disclosure: [
+        { step: '1', role: '공시', description: '공시 초안 작성 및 배포 방향 수립', result: '공시 초안' },
+        { step: '2', role: 'Risk & Compliance Manager', description: '공시 내용의 규제 검토 및 리스크 확인', result: '검토 의견' },
+        { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 정리 및 최종 배포 자료 준비', result: '배포 자료' },
+        { step: '4', role: 'CEO Agent', description: '초기 승인 및 배포 방향 확인', result: '초기 승인' },
+        { step: '5', role: '협의체', description: '내부 최종 검토 및 합의', result: '내부 합의' },
+        { step: '6', role: 'CEO Agent', description: '최종 내용 확인 및 배포 승인', result: '최종 승인' },
+        { step: '7', role: '배포', description: '공시문 게시 및 채널 공유', result: '공시 완료' }
+      ],
+      exchange: [
+        { step: '1', role: 'BD', description: '거래소 요구사항 확인 및 회신 초안 작성', result: '회신 초안' },
+        { step: '2', role: 'Risk & Compliance Manager', description: '규제 리스크 및 메시지 검토', result: '검토 의견' },
+        { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 정리 및 최종 회신 자료 준비', result: '최종 회신 자료' },
+        { step: '4', role: 'CEO Agent', description: '초기 승인 및 회신 방향 확인', result: '초기 승인' },
+        { step: '5', role: '협의체', description: '내부 최종 검토 및 합의', result: '내부 합의' },
+        { step: '6', role: 'CEO Agent', description: '최종 확인 및 회신 승인', result: '최종 승인' },
+        { step: '7', role: '배포', description: '거래소에 공식 회신 발송', result: '회신 완료' }
+      ],
+      mou: [
+        { step: '1', role: 'BD', description: '파트너 조건 정리 및 MOU 초안 작성', result: 'MOU 초안' },
+        { step: '2', role: '법무/재무', description: '계약서와 법적 리스크 검토', result: '법무 검토 의견' },
+        { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 정리 및 내부 공유', result: '내부 검토 자료' },
+        { step: '4', role: 'CEO Agent', description: '승인 여부 확인 및 방향 확정', result: 'CEO 승인' },
+        { step: '5', role: '협의체', description: '필요 시 추가 협의 및 최종 조율', result: '내부 합의' },
+        { step: '6', role: 'CEO Agent', description: '최종 사인 및 실행 승인', result: '최종 승인' },
+        { step: '7', role: '배포', description: '파트너와 MOU 체결 및 확정', result: 'MOU 체결 완료' }
+      ],
+      community: [
+        { step: '1', role: '커뮤니티 마케팅', description: '공지/이벤트 내용 작성 및 검토', result: '공지 초안' },
+        { step: '2', role: 'Chief of Staff / CoS', description: '공지 내용 검토 및 배포 계획 확인', result: '배포 자료' },
+        { step: '3', role: '배포', description: '커뮤니티 채널에 공지 배포', result: '공지 완료' }
+      ],
+      proposal: [
+        { step: '1', role: '거버넌스', description: '프로포절 안건 작성 및 구조 검토', result: '프로포절 초안' },
+        { step: '2', role: 'Risk & Compliance Manager', description: '규제 및 체계 검토', result: '리스크 분석' },
+        { step: '3', role: 'Chief of Staff / CoS', description: '제안 내용 정리 및 CEO 제출 준비', result: '제출 자료' },
+        { step: '4', role: 'CEO Agent', description: '최종 승인 및 제출 결정', result: 'CEO 제출 승인' },
+        { step: '5', role: '협의체', description: '내부 의견 수렴 및 조정', result: '내부 결론' },
+        { step: '6', role: 'CEO Agent', description: '최종 확인 및 제출 실행', result: '최종 제출 승인' },
+        { step: '7', role: '배포', description: '온체인 프로포절 제출', result: '제출 완료' }
+      ],
+      legal: [
+        { step: '1', role: '법무/재무', description: '계약서 검토 및 법률 리스크 확인', result: '법무 검토 의견' },
+        { step: '2', role: 'Risk & Compliance Manager', description: '계약상 규제 사항 추가 확인', result: '추가 검토 의견' },
+        { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 취합 및 CEO 제출', result: '승인 요청 자료' },
+        { step: '4', role: 'CEO Agent', description: '최초 승인 및 협의체 상정', result: 'CEO 상정 결정' },
+        { step: '5', role: '협의체', description: '최종 내부 컨펌 회의', result: '내부 합의' },
+        { step: '6', role: 'CEO Agent', description: '최종 승인 및 배포 방향 결정', result: '최종 계약 승인' },
+        { step: '7', role: '배포', description: '계약 진행 및 체결 준비', result: '계약 체결 진행' }
+      ],
+      tech: [
+        { step: '1', role: '테크', description: '기술 문서 작성 및 검토', result: '업데이트 문서' },
+        { step: '2', role: 'Chief of Staff / CoS', description: '내용 확인 및 배포 준비', result: '배포 자료' },
+        { step: '3', role: '배포', description: '문서 배포 및 공유', result: '배포 완료' }
+      ],
+      cs: [
+        { step: '1', role: 'CS', description: '고객 문의 대응안 작성', result: '응대 초안' },
+        { step: '2', role: 'Chief of Staff / CoS', description: '응대 내용 확인 및 배포 준비', result: '응대 승인' },
+        { step: '3', role: '배포', description: '고객에게 응답 전달', result: '응대 완료' }
+      ],
+      partner_comm: [
+        { step: '1', role: 'BD', description: '파트너사 요구사항 확인 및 커뮤니케이션 초안 작성', result: '커뮤니케이션 초안' },
+        { step: '2', role: 'Risk & Compliance Manager', description: '대외 리스크 및 내용 검토', result: '리스크 검토 의견' },
+        { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 정리 및 최종 회신 자료 준비', result: '최종 회신 자료' },
+        { step: '4', role: 'CEO Agent', description: '최종 회신 승인 및 대응 방향 확정', result: '회신 승인' },
+        { step: '5', role: '배포', description: '파트너사에 공식 회신 발송', result: '회신 완료' }
+      ],
+      governance_report: [
+        { step: '1', role: '거버넌스', description: '밸리데이터 상태·투표 현황·메인넷 변경 사항 정리', result: '거버넌스 현황 초안' },
+        { step: '2', role: 'Risk & Compliance Manager', description: '규제·운영 리스크 검토', result: '리스크 검토 의견' },
+        { step: '3', role: 'Chief of Staff / CoS', description: '내용 취합 및 배포 계획 확인', result: '배포 자료' },
+        { step: '4', role: 'CEO Agent', description: '최종 확인 및 배포 승인', result: '배포 승인' },
+        { step: '5', role: '배포', description: '밸리데이터 채널 및 커뮤니티 공유', result: '공지 완료' }
+      ]
+    };
+
+    const routeByLevel = {
+      Green: [
+        { label: 'Level 1', role: '실무 에이전트', action: '초안 작성 및 분류' },
+        { label: 'Level 3', role: 'CoS', action: '취합·정리·내부 승인' },
+        { label: '배포', role: '배포', action: '내부/외부 공유' }
+      ],
+      Yellow: [
+        { label: 'Level 1', role: '실무 에이전트', action: '초안 작성 및 리스크 정보 정리' },
+        { label: 'Level 2', role: 'Risk & Compliance Manager', action: '1차 리스크 검토' },
+        { label: 'Level 3', role: 'CoS', action: '검토 결과 정리 및 승인 요청' },
+        { label: 'Level 4', role: 'CEO Agent', action: '최종 확인 및 배포 승인' },
+        { label: '배포', role: '배포', action: '외부 배포' }
+      ],
+      Red: [
+        { label: 'Level 1', role: '실무 에이전트', action: '초안 작성 및 위험 요소 정리' },
+        { label: 'Level 2', role: 'Risk & Compliance Manager', action: '1차 리스크 점검' },
+        { label: 'Level 3', role: 'CoS', action: '검토 결과 정리 및 CEO 제출' },
+        { label: 'Level 4', role: 'CEO Agent', action: '최종 승인' },
+        { label: 'Human', role: '최고 협의체', action: '사람 최종 컨펌' },
+        { label: '배포', role: '배포', action: '외부 배포' }
+      ]
+    };
+
+    // ── DOM 참조 ────────────────────────────────────
+    const scenarioInput = document.getElementById('scenarioInput');
+    const runButton     = document.getElementById('runButton');
+    const clearButton   = document.getElementById('clearButton');
+    const simulationTitle = document.getElementById('simulationTitle');
+    const simulationBody  = document.getElementById('simulationBody');
+    const simulationArea  = document.getElementById('simulationArea');
+    let animationTimers = [];
+
+    // ── 헬퍼 ────────────────────────────────────────
+    function clearAnimationTimers() {
+      animationTimers.forEach(id => clearTimeout(id));
+      animationTimers = [];
+    }
+
+    function findScenario(query) {
+      const normalized = query.trim().toLowerCase();
+      if (!normalized) return null;
+      const exact = scenarios.find(s =>
+        s.keywords.some(k => normalized.includes(k.toLowerCase()))
+      );
+      if (exact) return exact;
+      const scored = scenarios
+        .map(s => {
+          const score = s.keywords.reduce((sum, k) => {
+            const key = k.toLowerCase();
+            if (normalized.includes(key)) return sum + 4;
+            return key.split(/\s+/).filter(Boolean)
+              .reduce((sub, t) => sub + (normalized.includes(t) ? 1 : 0), sum);
+          }, 0);
+          return { scenario: s, score };
+        })
+        .filter(i => i.score > 0)
+        .sort((a, b) => b.score - a.score);
+      return scored.length ? scored[0].scenario : null;
+    }
+
+    function classifyLevelByRule(query) {
+      const n = query.trim().toLowerCase();
+      if (!n) return 'Green';
+      if (ruleKeywords.red.some(k => n.includes(k)))    return 'Red';
+      if (ruleKeywords.yellow.some(k => n.includes(k))) return 'Yellow';
+      if (ruleKeywords.green.some(k => n.includes(k)))  return 'Green';
+      return 'Yellow';
+    }
+
+    function getAgentLabel(scenario, query) {
+      if (scenario && scenario.agent) return scenario.agent;
+      const n = (query || '').trim().toLowerCase();
+      if (!n) return '';
+      if (/공시|유통량|cmc|코인마켓캡|coinmarketcap/.test(n)) return '공시 Agent';
+      if (/계약|mou|binding|obligation|commit/.test(n))        return '법무/재무 Agent';
+      if (/이벤트|세레모니|행사|커뮤니티|공지/.test(n))       return '커뮤니티 마케팅 Agent';
+      if (/기술|테크|문서|개발/.test(n))                       return '테크 Agent';
+      if (/cs|고객|문의|지원/.test(n))                         return 'CS Agent';
+      if (/거래소/.test(n))                                     return 'BD Agent';
+      return '';
+    }
+
+    function buildFlow(scenario) {
+      if (!scenario) return [];
+      return flowTemplates[scenario.id] || scenario.flow || [];
+    }
+
+    // ── 렌더링 ──────────────────────────────────────
+    function renderSimulation(scenario, query) {
+      const level      = scenario ? scenario.level : classifyLevelByRule(query);
+      const route      = routeByLevel[level] || routeByLevel.Green;
+      const items      = scenario ? buildFlow(scenario) : route;
+      const agentLabel = getAgentLabel(scenario, query);
+      const title      = scenario ? scenario.title : '룰 기반 시나리오 분석';
+
+      // 플로우 메타 헤더
+      const flowMeta          = document.getElementById('flowMeta');
+      const flowLevelBadge    = document.getElementById('flowLevelBadge');
+      const flowTitleText     = document.getElementById('flowTitleText');
+      const flowAgentLabel    = document.getElementById('flowAgentLabel');
+      const flowProgressBar   = document.getElementById('flowProgressBar');
+      const flowProgressLabel = document.getElementById('flowProgressLabel');
+      const flowBackWrap      = document.getElementById('flowBackWrap');
+
+      if (flowMeta) {
+        flowMeta.hidden = false;
+        flowLevelBadge.textContent = level.toUpperCase();
+        flowLevelBadge.className   = `flow-level-badge ${level.toLowerCase()}`;
+        flowTitleText.textContent  = title;
+        flowAgentLabel.textContent = agentLabel ? `담당: ${agentLabel}` : '';
+        flowProgressBar.style.width = '0%';
+        flowProgressBar.className  = `flow-progress-bar ${level.toLowerCase()}`;
+        flowProgressLabel.textContent = `0 / ${items.length} 단계`;
+      }
+      if (flowBackWrap) flowBackWrap.hidden = true;
+
+      // 이전 완료 배너 제거
+      const oldBanner = simulationBody.querySelector('.flow-complete-banner');
+      if (oldBanner) oldBanner.remove();
+
+      simulationTitle.textContent = title;
+      if (simulationArea) {
+        simulationArea.classList.remove('red', 'yellow', 'green');
+        simulationArea.classList.add(level.toLowerCase());
+      }
+
+      const inferenceHint = scenario
+        ? `<span>MD 기준 AI 추론을 적용한 실제적 흐름</span>`
+        : `<span>입력 기반 추론 흐름</span>`;
+
+      simulationBody.innerHTML = `
+        <div class="hint-line" style="gap:10px; margin-bottom:16px;">
+          <span>리스크 레벨: ${level}</span>
+          <span>단계 수: ${items.length}</span>
+          ${agentLabel ? `<span>담당: ${agentLabel}</span>` : ''}
+          ${inferenceHint}
+        </div>
+        <div class="node-list">
+          ${items.map((item, index) => `
+            <div class="node-item" data-index="${index}"
+                 data-type="${scenario ? item.role.toUpperCase() + ' : ' + item.result : item.label}">
+              <div class="node-step">${scenario ? 'STEP ' + item.step : item.label}</div>
+              <p class="node-role">${item.role}</p>
+              <p class="typing-line"></p>
+              <p class="node-desc">${scenario ? item.description : item.action}</p>
+            </div>
+            ${index < items.length - 1
+              ? `<div class="timeline-connector" data-index="connector-${index}"></div>`
+              : ''}
+          `).join('')}
+        </div>
+      `;
+
+      const nodes      = Array.from(simulationBody.querySelectorAll('.node-item'));
+      const connectors = Array.from(simulationBody.querySelectorAll('.timeline-connector'));
+
+      nodes.forEach((node, idx) => {
+        node.classList.remove('active', 'completed', 'visible');
+        node.style.transitionDelay = `${idx * 120}ms`;
+      });
+      connectors.forEach((c, idx) => {
+        c.classList.remove('visible', 'active');
+        c.style.transitionDelay = `${idx * 120 + 80}ms`;
+      });
+
+      clearButton.disabled = false;
+      animateSteps(nodes, connectors, items.length);
+
+      if (simulationArea) {
+        simulationArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function animateSteps(nodes, connectors, totalSteps) {
+      clearAnimationTimers();
+
+      function updateProgress(completedCount) {
+        const bar   = document.getElementById('flowProgressBar');
+        const label = document.getElementById('flowProgressLabel');
+        if (bar)   bar.style.width = `${(completedCount / totalSteps) * 100}%`;
+        if (label) label.textContent = `${completedCount} / ${totalSteps} 단계`;
+      }
+
+      function typeText(element, text, callback) {
+        element.textContent = '';
+        element.classList.add('typing-cursor');
+        let index = 0;
+        const frame = () => {
+          if (index <= text.length) {
+            element.textContent = text.slice(0, index);
+            index++;
+            animationTimers.push(setTimeout(frame, 45));
+          } else {
+            element.classList.remove('typing-cursor');
+            if (callback) callback();
+          }
+        };
+        frame();
+      }
+
+      function showStep(idx) {
+        if (idx >= nodes.length) {
+          updateProgress(totalSteps);
+          // 완료 배너
+          const existingBanner = simulationBody.querySelector('.flow-complete-banner');
+          if (!existingBanner) {
+            const level = (simulationArea.className.match(/green|yellow|red/) || ['green'])[0];
+            const banner = document.createElement('div');
+            banner.className = `flow-complete-banner ${level}`;
+            banner.innerHTML = `<span>✓</span> 모든 단계 완료 — 승인 프로세스가 정상적으로 처리됐습니다`;
+            simulationBody.appendChild(banner);
+          }
+          const wrap = document.getElementById('flowBackWrap');
+          if (wrap) wrap.hidden = false;
+          return;
+        }
+
+        const node        = nodes[idx];
+        const typeLine    = node.querySelector('.typing-line');
+        const currentDesc = node.querySelector('.node-desc');
+
+        nodes.slice(0, idx).forEach(prev => {
+          prev.classList.add('completed');
+          prev.classList.remove('active');
+        });
+
+        node.classList.add('visible', 'active');
+        node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        if (idx > 0 && connectors[idx - 1]) {
+          connectors[idx - 1].classList.add('visible', 'active');
+        }
+
+        updateProgress(idx);
+
+        const text = node.dataset.type || '';
+        if (typeLine && text) {
+          typeText(typeLine, text, () => {
+            if (currentDesc) currentDesc.style.opacity = '1';
+            animationTimers.push(setTimeout(() => showStep(idx + 1), 900));
+          });
+        } else {
+          animationTimers.push(setTimeout(() => showStep(idx + 1), 1100));
+        }
+      }
+
+      showStep(0);
+    }
+
+    function renderEmpty(message) {
+      if (simulationArea) simulationArea.classList.remove('red', 'yellow', 'green');
+      const flowMeta = document.getElementById('flowMeta');
+      if (flowMeta) flowMeta.hidden = true;
+      const flowBackWrap = document.getElementById('flowBackWrap');
+      if (flowBackWrap) flowBackWrap.hidden = true;
+      simulationTitle.textContent = '시뮬레이션 결과';
+      simulationBody.innerHTML = `<div class="empty-state">${message}</div>`;
+      clearButton.disabled = true;
+    }
+
+    // ── 오버뷰 렌더링 ────────────────────────────────
+    const overviewConfig = [
+      {
+        level: 'Green',
+        emoji: '🟢',
+        label: 'GREEN — 일반 운영',
+        desc: '내부 운영, 정기 업데이트, 커뮤니티 공지 등 리스크가 낮은 상황',
+        examples: ['커뮤니티 공지', '이벤트', '테크 문서', 'CS'],
+        chain: ['실무 에이전트', 'CoS', '배포'],
+        chipLevels: ['L1', 'L3', '—'],
+        humanIndex: -1
+      },
+      {
+        level: 'Yellow',
+        emoji: '🟡',
+        label: 'YELLOW — 외부 커뮤니케이션',
+        desc: '파트너 대응, 거버넌스 안내 등 리스크가 낮은 대외 건',
+        examples: ['파트너사 대응', '거버넌스 현황 리포트', '밸리데이터 관련', '이벤트(토큰 보상)'],
+        chain: ['실무 에이전트', 'Risk & Compliance', 'CoS', 'CEO Agent', '배포'],
+        chipLevels: ['L1', 'L2', 'L3', 'L4', '—'],
+        humanIndex: -1
+      },
+      {
+        level: 'Red',
+        emoji: '🔴',
+        label: 'RED — 고위험 의사결정',
+        desc: '계약, MOU, 온체인 프로포절 등 법적·재무적 영향이 큰 상황',
+        examples: ['공시 등록', '법무 계약', '프로포절', '거래소 대응'],
+        chain: ['실무 에이전트', 'Risk & Compliance', 'CoS', 'CEO Agent', '협의체 (Human)', 'CEO Agent', '배포'],
+        chipLevels: ['L1', 'L2', 'L3', 'L4', 'Human', 'L4', '—'],
+        humanIndex: 4
+      }
+    ];
+
+    function renderOverview() {
+      const grid = document.getElementById('overviewGrid');
+      if (!grid) return;
+      grid.innerHTML = overviewConfig.map(cfg => `
+        <div class="route-col ${cfg.level.toLowerCase()}">
+          <div class="route-level-badge">${cfg.emoji} ${cfg.label}</div>
+          <p class="route-level-desc">${cfg.desc}</p>
+          <div class="route-examples">
+            ${cfg.examples.map(e => `<span>${e}</span>`).join('')}
+          </div>
+          <div class="route-chain">
+            ${cfg.chain.map((role, i) => {
+              const isHuman  = cfg.humanIndex === i;
+              const isDeploy = role === '배포';
+              const lv       = cfg.chipLevels ? cfg.chipLevels[i] : '';
+              return `
+                <div class="role-chip ${isHuman ? 'human' : ''} ${isDeploy ? 'deploy' : ''}">
+                  <span>${role}</span>
+                  ${lv ? `<span class="role-chip-level">${lv}</span>` : ''}
+                </div>
+                ${i < cfg.chain.length - 1 ? '<div class="chain-arrow">↓</div>' : ''}
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ── 시나리오 카드 렌더링 ─────────────────────────
+    const groupOrder = [
+      { level: 'Red',    emoji: '🔴', label: 'HIGH RISK' },
+      { level: 'Yellow', emoji: '🟡', label: 'MEDIUM RISK' },
+      { level: 'Green',  emoji: '🟢', label: 'LOW RISK' }
+    ];
+
+    function renderScenarioCards() {
+      const container = document.getElementById('scenarioGroups');
+      if (!container) return;
+      container.innerHTML = groupOrder.map(group => {
+        const cards = scenarios.filter(s => s.level === group.level);
+        return `
+          <div class="scenario-group">
+            <div class="group-heading ${group.level.toLowerCase()}">${group.emoji} ${group.label}</div>
+            <div class="scenario-card-grid">
+              ${cards.map(s => {
+                const steps = (flowTemplates[s.id] || s.flow || []).length;
+                return `
+                  <div class="scenario-card ${s.level.toLowerCase()}"
+                       data-scenario-id="${s.id}"
+                       role="button"
+                       tabindex="0"
+                       aria-label="${s.title} 시뮬레이션 시작">
+                    <div class="card-level-bar"></div>
+                    <div class="card-body">
+                      <div class="card-title">${s.title}</div>
+                      <div class="card-meta">
+                        ${s.agent ? `<span class="card-agent">${s.agent}</span>` : ''}
+                        <span class="card-steps">${steps}단계</span>
+                      </div>
+                    </div>
+                    <div class="card-arrow">›</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ── 초기 렌더링 ──────────────────────────────────
+    renderOverview();
+    renderScenarioCards();
+    renderEmpty('위에서 시나리오 카드를 클릭하거나 상황을 직접 입력하세요.');
+
+    // ── 이벤트 리스너 ────────────────────────────────
+    runButton.addEventListener('click', () => {
+      const query = scenarioInput.value.trim();
+      if (!query) {
+        renderEmpty('상단에 상황을 입력하고 "시뮬레이션 시작"을 눌러 흐름을 확인하세요.');
+        return;
+      }
+      document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+      renderSimulation(findScenario(query), query);
+    });
+
+    clearButton.addEventListener('click', () => {
+      scenarioInput.value = '';
+      clearAnimationTimers();
+      document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+      renderEmpty('위에서 시나리오 카드를 클릭하거나 상황을 직접 입력하세요.');
+      clearButton.disabled = true;
+    });
+
+    scenarioInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') runButton.click();
+    });
+
+    // 카드 클릭
+    document.getElementById('scenarioGroups').addEventListener('click', e => {
+      const card = e.target.closest('.scenario-card');
+      if (!card) return;
+      const scenario = scenarios.find(s => s.id === card.dataset.scenarioId);
+      if (!scenario) return;
+      document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      scenarioInput.value = '';
+      clearAnimationTimers();
+      renderSimulation(scenario, scenario.title);
+    });
+
+    document.getElementById('scenarioGroups').addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.target.closest('.scenario-card')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      }
+    });
+
+    // ── 에이전트 다이어그램 팝업 ─────────────────────
+    const agentPopup        = document.getElementById('agentPopup');
+    const agentPopupTitle   = document.getElementById('agentPopupTitle');
+    const agentPopupSubtitle = document.getElementById('agentPopupSubtitle');
+    const agentPopupList    = document.getElementById('agentPopupList');
+    const agentPopupClose   = document.getElementById('agentPopupClose');
+
+    const agentDetails = {
+      bd: {
+        title: 'BD Agent',
+        subtitle: '파트너·거래소 협업 및 리스크 대응',
+        items: [
+          '파트너·거래소 협업 전략 문서화',
+          '계약·MOU 리스크 점검 및 개선 제안',
+          '파트너 진행 상태와 이슈 리포트 작성',
+          '사업성 문의에 대한 CS 이관 기준 정리'
+        ]
+      },
+      disclosure: {
+        title: '공시 Agent',
+        subtitle: '토큰·거래소 공시 지원',
+        items: [
+          '거래소·토큰 공시 문서 초안 작성',
+          '유통량·토큰 이동 공시 점검',
+          '공시 제출 자료 정리 및 관리',
+          '공시 이력과 누락 사항 검토'
+        ]
+      },
+      legal: {
+        title: '법무/재무 Agent',
+        subtitle: '법적·재무 리스크 검토 지원',
+        items: [
+          '계약서·MOU 리스크 검토 코멘트',
+          '법무·재무 이슈 요약 및 우선순위 정리',
+          '자금 흐름·예산 리스크 현황 작성',
+          '내부 정책·규정 문서 초안 작성'
+        ]
+      },
+      governance: {
+        title: '거버넌스 Agent',
+        subtitle: '온체인 거버넌스 운영 지원',
+        items: [
+          '밸리데이터·투표 현황 리포트 작성',
+          '온체인 프로포절 초안 및 진행 정리',
+          '메인넷/프로토콜 업데이트 요약',
+          '거버넌스 운영 안내 문서화'
+        ]
+      },
+      tech: {
+        title: '테크 Agent',
+        subtitle: '기술 문서 및 개발자 지원',
+        items: [
+          '기술 문서·FAQ 초안 작성',
+          '메인넷·SDK·API 정보를 정리',
+          '개발자 문의 응대 초안 작성',
+          '기술 이슈·장애 안내문 정리'
+        ]
+      },
+      cs: {
+        title: 'CS Agent',
+        subtitle: '유저 문의 분석 및 응대 준비',
+        items: [
+          '유저 문의 유형 분류 및 요약',
+          '표준 답변·FAQ 초안 작성',
+          '다국어 문의 응대 문서 정리',
+          '민감 문의 에스컬레이션 안내'
+        ]
+      },
+      community: {
+        title: '커뮤니티 마케팅 Agent',
+        subtitle: '커뮤니티 콘텐츠 및 공지 지원',
+        items: [
+          '커뮤니티 공지·이벤트 안내 초안 작성',
+          '커뮤니티 반응 요약 보고서 작성',
+          '외부용 공시·BD 콘텐츠 재구성',
+          '정기 업데이트 메시지 관리'
+        ]
+      },
+      rc: {
+        title: 'Risk & Compliance Manager',
+        subtitle: 'Yellow·Red 리스크 게이트',
+        items: [
+          '정책·법률 리스크 1차 검토',
+          '보완 요청 내용 문서화',
+          'CoS/CEO 보고용 리스크 요약 작성',
+          '리뷰 이력 및 상태 관리'
+        ]
+      },
+      cos: {
+        title: 'Chief of Staff (CoS)',
+        subtitle: '승인 흐름 취합 및 보고 허브',
+        items: [
+          '실무 에이전트 산출물 취합 및 정리',
+          'Green 건 내부 승인 및 배포 지원',
+          'Yellow·Red 안건 CEO 보고 준비',
+          '협의체 상정 자료 정리'
+        ]
+      },
+      ceo: {
+        title: 'CEO Agent',
+        subtitle: '최종 전략 방향 및 협의체 상정',
+        items: [
+          'Yellow·Red 안건 전략 판단',
+          '최종 승인 방향 결정',
+          '협의체 상정 여부 판단',
+          '긴급 이슈 대응 원칙 제시'
+        ]
+      },
+      counsel: {
+        title: '협의체',
+        subtitle: '사람 최종 컨펌 조직',
+        items: [
+          '공식 입장·공시·계약 최종 컨펌',
+          '법적·재무 리스크 최종 확인',
+          '사람 의사결정 실행',
+          '외부 배포 전 최종 검증'
+        ]
+      }
+    };
+
+    function openAgentPopup(agent) {
+      if (!agentPopup || !agent) return;
+      agentPopupTitle.textContent = agent.title;
+      agentPopupSubtitle.textContent = agent.subtitle;
+      agentPopupList.innerHTML = agent.items.map(item => `<li>${item}</li>`).join('');
+      agentPopup.classList.add('active');
+    }
+
+    function closeAgentPopup() {
+      agentPopup?.classList.remove('active');
+    }
+
+    agentPopupClose?.addEventListener('click', closeAgentPopup);
+    agentPopup?.addEventListener('click', e => {
+      if (e.target === agentPopup) closeAgentPopup();
+    });
+
+    const agentElementMap = {
+      'agent-bd': 'bd',
+      'agent-disclosure': 'disclosure',
+      'agent-legal': 'legal',
+      'agent-governance': 'governance',
+      'agent-tech': 'tech',
+      'agent-cs': 'cs',
+      'agent-community': 'community',
+      'agent-rc': 'rc',
+      'agent-cos': 'cos',
+      'agent-ceo': 'ceo',
+      'agent-counsel': 'counsel'
+    };
+
+    Object.entries(agentElementMap).forEach(([id, key]) => {
+      const element = document.getElementById(id);
+      if (!element) return;
+      element.classList.add('agent-node');
+      element.style.cursor = 'pointer';
+      element.addEventListener('click', () => openAgentPopup(agentDetails[key]));
+      element.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openAgentPopup(agentDetails[key]);
+        }
+      });
+    });
+
+    // 다른 시나리오 보기
+    document.getElementById('backToSelectButton').addEventListener('click', () => {
+      document.querySelector('.section-select')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+    });
+  </script>
+</body>
+</html>
