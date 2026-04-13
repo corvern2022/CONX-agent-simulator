@@ -302,14 +302,81 @@
     /* ── 섹션 1: 시스템 오버뷰 ── */
     .overview-header { margin-bottom: 24px; }
 
+    .overview-header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
     .overview-header h1 {
-      margin: 0 0 10px;
+      margin: 0;
       font-size: clamp(1.8rem, 3vw, 2.4rem);
       line-height: 1.1;
     }
 
+    .md-download {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .md-download summary {
+      list-style: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .md-download summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .md-download summary.button {
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+    }
+
+    .md-download[open] summary.button {
+      background: rgba(43,42,40,.14);
+    }
+
+    .md-download-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: min(320px, calc(100vw - 32px));
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 18px 30px rgba(38,36,33,.13);
+      padding: 8px;
+      z-index: 20;
+      display: grid;
+      gap: 4px;
+    }
+
+    .md-download-menu a {
+      display: block;
+      padding: 9px 10px;
+      border-radius: 10px;
+      color: #2b2a28;
+      font-size: 0.84rem;
+      line-height: 1.35;
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
+
+    .md-download-menu a:hover {
+      background: #f5f4ef;
+      border-color: rgba(43,42,40,.09);
+    }
+
     .overview-subtitle {
-      margin: 0;
+      margin: 2px 0 0;
       color: #5b584f;
       font-size: 0.95rem;
       line-height: 1.6;
@@ -354,55 +421,31 @@
     }
 
     .route-examples {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
+      width: 100%;
       max-width: 100%;
       margin: 0 auto;
     }
 
     .route-examples span {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
-      flex: 0 1 calc(33% - 10px);
-      min-width: 100px;
-      max-width: 150px;
-      min-height: 36px;
-      padding: 10px 12px;
-      font-size: 0.76rem;
-      line-height: 1.3;
+      width: 100%;
+      min-height: 37px;
+      height: 37px;
+      padding: 0 16px;
+      font-size: 0.74rem;
+      line-height: 1.2;
       border-radius: 999px;
       background: rgba(43,42,40,.08);
       color: #5b584f;
       overflow: hidden;
-    }
-
-    .route-col.green .route-examples span,
-    .route-col.yellow .route-examples span {
       white-space: nowrap;
-      overflow: hidden;
       text-overflow: ellipsis;
-      max-height: 38px;
-      line-height: 1.3;
-    }
-
-    .route-col.red .route-examples span {
-      flex: 0 1 calc(30% - 10px);
-      min-width: 100px;
-      max-width: 150px;
-      padding: 10px 12px;
-      font-size: 0.75rem;
-      white-space: normal;
-      line-height: 1.3;
-      max-height: 58px;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
     }
 
     .route-chain {
@@ -830,6 +873,16 @@
       .scenario-card-grid { grid-template-columns: 1fr; }
       .search-action { justify-content: stretch; }
       .button { width: 100%; }
+      .overview-header-top { align-items: stretch; }
+      .md-download summary.button { width: 100%; }
+      .md-download { width: 100%; }
+      .md-download-menu { left: 0; right: auto; width: 100%; }
+      .route-examples span {
+        min-height: 35px;
+        height: 35px;
+        font-size: 0.72rem;
+        padding: 0 12px;
+      }
     }
   </style>
 </head>
@@ -839,9 +892,26 @@
     <!-- 섹션 0: 시스템 오버뷰 -->
     <section class="section-overview">
       <div class="overview-header">
-        <h1>CONX Foundation AI Agent 시뮬레이터</h1>
-                <p class="overview-subtitle">입력한 상황을 분류하고, 적합한 승인 흐름을 간편하게 확인합니다.</p>
-        <p class="overview-meta"><a class="external-link" href="https://xpla.foundation" target="_blank" rel="noreferrer">공식 웹 문서 보기 ↗</a></p>
+        <div class="overview-header-top">
+          <h1>CONX Foundation AI Agent 시뮬레이터</h1>
+          <details class="md-download">
+            <summary class="button secondary">MD 다운로드</summary>
+            <div class="md-download-menu">
+              <a href="docs/md/00_common_rules.md" download>00_공통_적용_법칙.md</a>
+              <a href="docs/md/01_BD_Agent.md" download>01_BD_Agent.md</a>
+              <a href="docs/md/02_CS_Agent.md" download>02_CS_Agent.md</a>
+              <a href="docs/md/03_disclosure_Agent.md" download>03_공시_Agent.md</a>
+              <a href="docs/md/04_governance_Agent.md" download>04_거버넌스_Agent.md</a>
+              <a href="docs/md/05_legal_finance_Agent.md" download>05_법무재무_Agent.md</a>
+              <a href="docs/md/06_tech_Agent.md" download>06_테크_Agent.md</a>
+              <a href="docs/md/07_community_marketing_Agent.md" download>07_커뮤니티마케팅_Agent.md</a>
+              <a href="docs/md/08_Level2_Risk_Compliance_Manager_Agent.md" download>08_Level2_Risk_Compliance_Manager_Agent.md</a>
+              <a href="docs/md/09_Level3_Chief_of_Staff_Agent.md" download>09_Level3_Chief_of_Staff_Agent.md</a>
+              <a href="docs/md/10_Level4_CEO_Agent.md" download>10_Level4_CEO_Agent.md</a>
+            </div>
+          </details>
+        </div>
+        <p class="overview-subtitle">입력한 상황을 분류하고, 적합한 승인 흐름을 간편하게 확인합니다.</p>
       </div>
       <div class="overview-grid" id="overviewGrid"></div>
     </section>
@@ -934,11 +1004,11 @@
                     font-weight="700" fill="#7d2020">공시</text>
             </g>
 
-            <g id="agent-legal" class="agent-group" role="button" aria-label="법무/재무 Agent" tabindex="0">
+            <g id="agent-legal" class="agent-group" role="button" aria-label="법무재무 Agent" tabindex="0">
               <rect x="258" y="42" width="110" height="52" rx="12"
                     fill="#fdf0f0" stroke="rgba(163,45,45,.28)" stroke-width="1.5"/>
               <text x="313" y="73" text-anchor="middle" font-size="14"
-                    font-weight="700" fill="#7d2020">법무/재무</text>
+                    font-weight="700" fill="#7d2020">법무재무</text>
             </g>
 
             <!-- ── CoS 직행 그룹 ── -->
@@ -1115,16 +1185,17 @@
         id: 'mou',
         keywords: ['파트너사 MOU 체결', 'MOU', '파트너'],
         title: '파트너사 MOU 체결',
-        agent: 'BD + 법무/재무 Agent',
+        agent: 'BD + 법무재무 Agent',
         level: 'Red',
         flow: [
           { step: '1', role: 'BD', description: '파트너 계약 조건 정리 및 MOU 초안 작성', result: 'MOU 초안' },
-          { step: '2', role: '법무/재무', description: '초안의 법적·재무적 리스크 검토 및 수정', result: '법무 검토 의견' },
-          { step: '3', role: 'Chief of Staff / CoS', description: '법무/재무 검토 결과 정리 및 내부 공유', result: '내부 검토 자료' },
-          { step: '4', role: 'CEO Agent', description: '최종 승인 여부 확인 및 서명 지시', result: 'CEO 승인' },
-          { step: '5', role: '협의체', description: '필요 시 추가 협의 및 최종 조율', result: '내부 합의' },
-          { step: '6', role: 'CEO Agent', description: '최종 승인 확인 및 실행 준비', result: '최종 배포 승인' },
-          { step: '7', role: '배포', description: '파트너와 MOU 체결 완료', result: 'MOU 체결 완료' }
+          { step: '2', role: '법무재무', description: '계약·재무 리스크 검토 및 수정 의견 작성', result: '법무재무 검토 의견' },
+          { step: '3', role: 'Risk & Compliance Manager', description: '레드라인 여부 및 리스크 수준 1차 판정', result: '리스크 검토 의견' },
+          { step: '4', role: 'Chief of Staff / CoS', description: '검토 결과 취합 및 CEO 상정 자료 준비', result: 'CEO 상정 자료' },
+          { step: '5', role: 'CEO Agent', description: '협의체 상정 여부 및 승인 방향 결정', result: 'CEO 상정 결정' },
+          { step: '6', role: '협의체', description: '사람 최종 컨펌 및 수정 의견 확정', result: '최종 컨펌' },
+          { step: '7', role: 'CEO Agent', description: '최종 승인 확정 및 실행 지시', result: '최종 승인' },
+          { step: '8', role: '배포', description: '승인된 문안 기준으로 체결/커뮤니케이션 실행', result: '체결 진행 완료' }
         ]
       },
       {
@@ -1159,10 +1230,10 @@
         id: 'legal',
         keywords: ['법무 계약 검토', '법무', '계약 검토'],
         title: '법무 계약 검토',
-        agent: '법무/재무 Agent',
+        agent: '법무재무 Agent',
         level: 'Red',
         flow: [
-          { step: '1', role: '법무/재무', description: '계약서 검토 및 법률 리스크 확인', result: '법무 검토 의견' },
+          { step: '1', role: '법무재무', description: '계약서 검토 및 법률 리스크 확인', result: '법무 검토 의견' },
           { step: '2', role: 'Risk & Compliance Manager', description: '계약상 규제 사항 추가 확인', result: '추가 검토 의견' },
           { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 취합 및 CEO 제출', result: '승인 요청 자료' },
           { step: '4', role: 'CEO Agent', description: '최초 승인 및 협의체 상정', result: 'CEO 상정 결정' },
@@ -1263,12 +1334,13 @@
       ],
       mou: [
         { step: '1', role: 'BD', description: '파트너 조건 정리 및 MOU 초안 작성', result: 'MOU 초안' },
-        { step: '2', role: '법무/재무', description: '계약서와 법적 리스크 검토', result: '법무 검토 의견' },
-        { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 정리 및 내부 공유', result: '내부 검토 자료' },
-        { step: '4', role: 'CEO Agent', description: '승인 여부 확인 및 방향 확정', result: 'CEO 승인' },
-        { step: '5', role: '협의체', description: '필요 시 추가 협의 및 최종 조율', result: '내부 합의' },
-        { step: '6', role: 'CEO Agent', description: '최종 사인 및 실행 승인', result: '최종 승인' },
-        { step: '7', role: '배포', description: '파트너와 MOU 체결 및 확정', result: 'MOU 체결 완료' }
+        { step: '2', role: '법무재무', description: '계약서·재무 리스크 검토 및 의견 작성', result: '법무재무 검토 의견' },
+        { step: '3', role: 'Risk & Compliance Manager', description: '레드라인 여부와 규제 리스크 1차 검토', result: '리스크 검토 의견' },
+        { step: '4', role: 'Chief of Staff / CoS', description: '검토 결과 취합 및 CEO 상정 준비', result: 'CEO 상정 자료' },
+        { step: '5', role: 'CEO Agent', description: '협의체 상정 여부 및 승인 방향 결정', result: 'CEO 상정 결정' },
+        { step: '6', role: '협의체', description: '사람 최종 컨펌 및 수정 의견 확정', result: '최종 컨펌' },
+        { step: '7', role: 'CEO Agent', description: '최종 승인 확정 및 실행 지시', result: '최종 승인' },
+        { step: '8', role: '배포', description: '승인된 문안 기준 체결/커뮤니케이션 실행', result: '체결 진행 완료' }
       ],
       community: [
         { step: '1', role: '커뮤니티 마케팅', description: '공지/이벤트 내용 작성 및 검토', result: '공지 초안' },
@@ -1285,7 +1357,7 @@
         { step: '7', role: '배포', description: '온체인 프로포절 제출', result: '제출 완료' }
       ],
       legal: [
-        { step: '1', role: '법무/재무', description: '계약서 검토 및 법률 리스크 확인', result: '법무 검토 의견' },
+        { step: '1', role: '법무재무', description: '계약서 검토 및 법률 리스크 확인', result: '법무 검토 의견' },
         { step: '2', role: 'Risk & Compliance Manager', description: '계약상 규제 사항 추가 확인', result: '추가 검토 의견' },
         { step: '3', role: 'Chief of Staff / CoS', description: '검토 결과 취합 및 CEO 제출', result: '승인 요청 자료' },
         { step: '4', role: 'CEO Agent', description: '최초 승인 및 협의체 상정', result: 'CEO 상정 결정' },
@@ -1336,8 +1408,9 @@
         { label: 'Level 1', role: '실무 에이전트', action: '초안 작성 및 위험 요소 정리' },
         { label: 'Level 2', role: 'Risk & Compliance Manager', action: '1차 리스크 점검' },
         { label: 'Level 3', role: 'CoS', action: '검토 결과 정리 및 CEO 제출' },
-        { label: 'Level 4', role: 'CEO Agent', action: '최종 승인' },
+        { label: 'Level 4', role: 'CEO Agent', action: '협의체 상정 결정' },
         { label: 'Human', role: '최고 협의체', action: '사람 최종 컨펌' },
+        { label: 'Level 4', role: 'CEO Agent', action: '최종 승인 확정' },
         { label: '배포', role: '배포', action: '외부 배포' }
       ]
     };
@@ -1393,7 +1466,7 @@
       const n = (query || '').trim().toLowerCase();
       if (!n) return '';
       if (/공시|유통량|cmc|코인마켓캡|coinmarketcap/.test(n)) return '공시 Agent';
-      if (/계약|mou|binding|obligation|commit/.test(n))        return '법무/재무 Agent';
+      if (/계약|mou|binding|obligation|commit/.test(n))        return '법무재무 Agent';
       if (/이벤트|세레모니|행사|커뮤니티|공지/.test(n))       return '커뮤니티 마케팅 Agent';
       if (/기술|테크|문서|개발/.test(n))                       return '테크 Agent';
       if (/cs|고객|문의|지원/.test(n))                         return 'CS Agent';
@@ -1586,7 +1659,7 @@
         emoji: '🟢',
         label: 'GREEN — 일반 운영',
         desc: '내부 운영, 정기 업데이트, 커뮤니티 공지 등 리스크가 낮은 상황',
-        examples: ['커뮤니티 공지', '이벤트', '테크 문서', 'CS'],
+        examples: ['FAQ 답변 초안', '주간 커뮤니티 업데이트', '테크 Docs 업데이트', '파트너 상태 리포트'],
         chain: ['실무 에이전트', 'CoS', '배포'],
         chipLevels: ['L1', 'L3', '—'],
         humanIndex: -1
@@ -1595,8 +1668,8 @@
         level: 'Yellow',
         emoji: '🟡',
         label: 'YELLOW — 외부 커뮤니케이션',
-        desc: '파트너 대응, 거버넌스 안내 등 리스크가 낮은 대외 건',
-        examples: ['파트너사 대응', '거버넌스 현황 리포트', '밸리데이터 관련', '이벤트(토큰 보상)'],
+        desc: '파트너 대응, 거버넌스 안내 등 법적·재무 리스크가 낮은 대외 건',
+        examples: ['파트너사 대응', '거버넌스 현황 리포트', '밸리데이터 운영 안내', 'CMC 업데이트 초안'],
         chain: ['실무 에이전트', 'Risk & Compliance', 'CoS', 'CEO Agent', '배포'],
         chipLevels: ['L1', 'L2', 'L3', 'L4', '—'],
         humanIndex: -1
@@ -1605,8 +1678,8 @@
         level: 'Red',
         emoji: '🔴',
         label: 'RED — 고위험 의사결정',
-        desc: '계약, MOU, 온체인 프로포절 등 법적·재무적 영향이 큰 상황',
-        examples: ['공시 등록', '법무 계약', '프로포절', '거래소 대응'],
+        desc: '공시, 계약, 자산, 온체인 실행 등 최고 협의체 컨펌이 필요한 상황',
+        examples: ['공시 등록', 'MOU/계약 검토', '온체인 프로포절', '거래소 공식 대응'],
         chain: ['실무 에이전트', 'Risk & Compliance', 'CoS', 'CEO Agent', '협의체 (Human)', 'CEO Agent', '배포'],
         chipLevels: ['L1', 'L2', 'L3', 'L4', 'Human', 'L4', '—'],
         humanIndex: 4
@@ -1741,112 +1814,112 @@
     const agentDetails = {
       bd: {
         title: 'BD Agent',
-        subtitle: '파트너·거래소 협업 및 리스크 대응',
+        subtitle: '파트너·거래소 커뮤니케이션 초안 및 상태 관리',
         items: [
-          '파트너·거래소 협업 전략 문서화',
-          '계약·MOU 리스크 점검 및 개선 제안',
-          '파트너 진행 상태와 이슈 리포트 작성',
-          '사업성 문의에 대한 CS 이관 기준 정리'
+          '인바운드 문의 분류 및 템플릿 기반 1차 응답 초안 작성',
+          '파트너 진행 상태·액션·리스크 정리 보고',
+          '계약·미팅·제출 일정 추적 및 리마인드',
+          '파트너/거래소 커뮤니케이션 초안 작성 후 상위 보고'
         ]
       },
       disclosure: {
         title: '공시 Agent',
-        subtitle: '토큰·거래소 공시 지원',
+        subtitle: '유통량·토큰 이동 공시 초안 및 이력 관리',
         items: [
-          '거래소·토큰 공시 문서 초안 작성',
-          '유통량·토큰 이동 공시 점검',
-          '공시 제출 자료 정리 및 관리',
-          '공시 이력과 누락 사항 검토'
+          '유통량·유통계획 공시 초안 작성',
+          '토큰 이동 공시 필요 여부 판단 및 문안 초안 작성',
+          '거래소 포맷별 공시 문안·제출 자료 정리',
+          '공시 이력 관리 및 누락 점검'
         ]
       },
       legal: {
-        title: '법무/재무 Agent',
-        subtitle: '법적·재무 리스크 검토 지원',
+        title: '법무재무 Agent',
+        subtitle: '계약·트레저리 정리 및 법적·재무 리스크 문서화',
         items: [
-          '계약서·MOU 리스크 검토 코멘트',
-          '법무·재무 이슈 요약 및 우선순위 정리',
-          '자금 흐름·예산 리스크 현황 작성',
-          '내부 정책·규정 문서 초안 작성'
+          '계약서·MOU·이사회 결의서 초안 작성',
+          '계약 이력 관리·버전 통제·갱신 리마인드',
+          '트레저리 현황·토큰 이동 이력 정리',
+          '법적·재무 리스크 메모 작성 및 Level 2 보고'
         ]
       },
       governance: {
         title: '거버넌스 Agent',
-        subtitle: '온체인 거버넌스 운영 지원',
+        subtitle: '거버넌스 운영 현황·프로포절·투표 관리',
         items: [
-          '밸리데이터·투표 현황 리포트 작성',
-          '온체인 프로포절 초안 및 진행 정리',
-          '메인넷/프로토콜 업데이트 요약',
-          '거버넌스 운영 안내 문서화'
+          '밸리데이터 상태 이상·슬래싱·신규 참여 모니터링',
+          '메인넷 업데이트 일정·변경 사항 정리',
+          '온체인 프로포절 초안·진행 상태 관리',
+          '거버넌스 투표 현황·결과 리포트 작성'
         ]
       },
       tech: {
         title: '테크 Agent',
-        subtitle: '기술 문서 및 개발자 지원',
+        subtitle: '기술 문서·개발자 대응·장애 알림 초안',
         items: [
-          '기술 문서·FAQ 초안 작성',
-          '메인넷·SDK·API 정보를 정리',
-          '개발자 문의 응대 초안 작성',
-          '기술 이슈·장애 안내문 정리'
+          '메인넷·SDK·API·컨트랙트 기술 정보 정리',
+          '개발자 문서(Docs)·기술 FAQ 업데이트',
+          '외부 기술 문의 1차 답변 초안 작성',
+          '기술 장애·버그/보안 이슈 내부 알림 초안 작성'
         ]
       },
       cs: {
         title: 'CS Agent',
-        subtitle: '유저 문의 분석 및 응대 준비',
+        subtitle: '유저 문의 분류·답변 초안·민감 문의 이관',
         items: [
-          '유저 문의 유형 분류 및 요약',
-          '표준 답변·FAQ 초안 작성',
-          '다국어 문의 응대 문서 정리',
-          '민감 문의 에스컬레이션 안내'
+          'FAQ 기반 표준 답변 생성·관리',
+          '유저 문의 유형 분류 및 1차 답변 초안 작성',
+          '다국어 문의 정리·번역 기반 답변 초안 작성',
+          '주간 CS 리포트 및 민감 문의 에스컬레이션 메모'
         ]
       },
       community: {
         title: '커뮤니티 마케팅 Agent',
-        subtitle: '커뮤니티 콘텐츠 및 공지 지원',
+        subtitle: '채널별 콘텐츠 초안·반응 리포트·최종 발송 실행',
         items: [
-          '커뮤니티 공지·이벤트 안내 초안 작성',
-          '커뮤니티 반응 요약 보고서 작성',
-          '외부용 공시·BD 콘텐츠 재구성',
-          '정기 업데이트 메시지 관리'
+          '일반 콘텐츠·이벤트·AMA 공지 초안 작성',
+          '주간·월간 커뮤니티 업데이트 초안 작성',
+          '커뮤니티 반응·주요 이슈 요약 리포트 작성',
+          '공식 확정 자료 기반 커뮤니티 요약 콘텐츠 작성'
         ]
       },
       rc: {
         title: 'Risk & Compliance Manager',
-        subtitle: 'Yellow·Red 리스크 게이트',
+        subtitle: 'Yellow·Red 안건 1차 리스크 검토 게이트',
         items: [
-          '정책·법률 리스크 1차 검토',
-          '보완 요청 내용 문서화',
-          'CoS/CEO 보고용 리스크 요약 작성',
-          '리뷰 이력 및 상태 관리'
+          'Yellow·Red 산출물 법무·자산·공시 리스크 검토',
+          '보완 필요 안건 반려 및 재작성 지시',
+          '핵심 리스크 요약·등급 재분류 후 CoS 상정',
+          '검토 상태·이력 데이터 관리'
         ]
       },
       cos: {
         title: 'Chief of Staff (CoS)',
-        subtitle: '승인 흐름 취합 및 보고 허브',
+        subtitle: '중앙 운영 허브 및 결재 흐름 관리',
         items: [
-          '실무 에이전트 산출물 취합 및 정리',
-          'Green 건 내부 승인 및 배포 지원',
-          'Yellow·Red 안건 CEO 보고 준비',
-          '협의체 상정 자료 정리'
+          'Level 1·2 산출물 수신 및 통합 관리',
+          'Green 건 자체 승인 및 L1 배포 지시',
+          'Yellow·Red 건 CEO 상정 및 결재 흐름 관리',
+          '보완 반려·CEO/협의체 보고 브리핑 작성'
         ]
       },
       ceo: {
         title: 'CEO Agent',
-        subtitle: '최종 전략 방향 및 협의체 상정',
+        subtitle: 'Yellow·Red 전략 판단 및 최종 승인 방향 결정',
         items: [
-          'Yellow·Red 안건 전략 판단',
-          '최종 승인 방향 결정',
-          '협의체 상정 여부 판단',
-          '긴급 이슈 대응 원칙 제시'
+          'CoS 상정 Yellow·Red 안건 검토',
+          '승인·반려·수정 지시 결정',
+          'Red 안건 협의체 상정 여부 결정',
+          '전략 방향·대외 포지션 일관성 확인'
         ]
       },
       counsel: {
         title: '협의체',
-        subtitle: '사람 최종 컨펌 조직',
+        subtitle: '사람 최종 컨펌 조직 (Human)',
         items: [
           '공식 입장·공시·계약 최종 컨펌',
-          '법적·재무 리스크 최종 확인',
-          '사람 의사결정 실행',
-          '외부 배포 전 최종 검증'
+          '자산·예산·토큰 집행 관련 사람 의사결정',
+          '온체인 실행·핵심 거버넌스 최종 확인',
+          '위기 대응 메시지·사과문 최종 승인'
         ]
       }
     };
@@ -1855,7 +1928,7 @@
       if (!agentPopup || !agent) return;
       agentPopupTitle.textContent = agent.title;
       agentPopupSubtitle.textContent = agent.subtitle;
-      agentPopupList.innerHTML = agent.items.map(item => `<li>${item}</li>`).join('');
+      agentPopupList.innerHTML = agent.items.slice(0, 4).map(item => `<li>${item}</li>`).join('');
       agentPopup.classList.add('active');
     }
 
